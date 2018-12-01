@@ -1,5 +1,6 @@
 #
 # Copyright (c) 2014 R.Pissardini <rodrigo AT pissardini DOT com> 
+# Copyright (c) 2018 R.Pissardini <rodrigo AT pissardini DOT com> and Alex Boava Meza 
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -193,20 +194,50 @@ def geodetic2cartesian(lat,lon,h, a =6378137, b=6356752.314140347): #SIRGAS
 	return [X,Y,Z]
  
 def cartesian2geodetic (X, Y, Z, a = 6378137,b = 6356752.314140347): #SIRGAS
-	dif=1
-	e2 = (pow(a,2) -pow(b,2))/pow(a,2)
-	p = sqrt((X**2)+Y**2)
-	lat_apr = atan2(Z, p*(1-e2))
-	lon=atan2(Y,X)
-	while (fabs(dif)  > 0.000000000000001):
-		v = a/sqrt(1- e2* pow(sin(lat_apr),2))
-		h = (p/cos(lat_apr)) - v
-		lat = atan2(Z, (1-e2*(v/(v+h)))*p)
-		dif = lat - lat_apr
-		lat_apr = lat
-	lat = degrees(lat) #in degrees
-	lon = degrees(lon) #in degrees
-	return [lat,lon,h]
+        H = 0
+        v = 0
+        e2 = (pow(a,2) -pow(b,2))/pow(a,2)
+        p = pow(pow(X,2)+pow(Y,2),0.5)
+        lat = atan2(Z, p*(1-e2))
+        lat1 = 2 * pi
+        
+        while fabs(lat1-lat) > 1e-15:
+                v = a/pow((1- e2* pow(sin(lat),2)),0.5)
+                H = p/cos(lat)- v
+                lat1 = lat
+                lat = atan2(Z + e2 * v * sin(lat),p)
+        
+        lat = degrees(lat) #in degrees
+        lon = degrees(atan2(radians(Y), radians(X))) #in degrees
+        return [lat,lon,H]
+
+
+def geodetic2enu (lat, lon, h, a = 6378137, b = 6356752.314140347):
+    """ Convert from geodetic to a different ENU local coordinate system.
+    East  -- is the longitude multiplied by the radius of the small circle at that latitude
+    North -- is the product of the  geodetic latitue by the semi-major axis of the ellipsoid
+    Up    -- is the geodetic height
+    
+    Keyword arguments:
+    lat -- latitude in degrees
+    lon -- longitude in degrees
+    h   -- geodetic height in meters
+    a   -- semi-major axis (default SIRGAS)
+    b   -- semi-minor axis (default SIRGAS)
+    
+    """
+    	e2 = (pow(a,2) -pow(b,2))/pow(a,2)
+    	lat = radians(lat)
+    	v = a/pow((1- e2* pow(sin(lat),2)),0.5)
+    	small_circle = v * cos(lat)
+    	if (lon < 0):
+        	lon+=360
+    	E = radians(lon) * small_circle
+   	N = lat * a
+    	U = h
+    	return [E, N, U]
+    
+
 
 def helmert_transformation (X,Y,Z,tx,ty,tz,s,rx,ry,rz,a= 6378137,b=6356752.314140347):
 
@@ -278,6 +309,25 @@ def decimal2dms (decimal, direction): #N- E
         print('[Error] Insert a correct direction [N or E]\n')
         return
     return [degrees,minutes,seconds,direction]
+
+#skyplot and other charts 
+
+import matplotlib.pyplot as plt
+
+def skyplot (prn,e,az): #input lists of prn (or svid), elevation and azimuths 
+
+	ax = plt.subplot(111, projection='polar')
+	ax.set_theta_zero_location("N")
+	ax.set_theta_direction(-1)
+	ax.set_ylim(0,90)
+	ax.set_yticks(np.arange(0,91,30))
+	ax.set_yticklabels(ax.get_yticks()[::-1])
+
+	for sv, elev, azim in zip(prn, e, az):
+	    ax.plot(math.radians(azim), 90-elev,color='green', marker='o', markersize=20)
+	    ax.text(math.radians(azim), 90-elev, sv, ha='center', va='center',color='white')
+
+	plt.show()
 
 #General functions 
 
