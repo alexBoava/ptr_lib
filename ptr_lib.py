@@ -339,3 +339,49 @@ def get_fracpart (value):
 	fpart = modf(value)
 	return fpart[0]
 
+def polyRegression(ts, poly=2):
+    '''
+    polyRegression is a function to calculate the POLINOMIAL REGRESSION of a time series until the 5º term.
+    
+                                y = B0 + B1.x +  B2.x^2 + B3.x^3 ... Bn.x^n
+                        
+    INPUT:
+        ts   - the time series
+        poly - number of terms
+        
+    OUTPUT:
+        B        - Regression output parameters
+        ts_trend - Regression calculated coordinates. Output to construct graphs or calculate error of regression.
+    
+    '''
+    if poly > 5:
+        print("\n \t \t A quantidade de termos deve ser menor ou igual a 5 \n")
+    else:
+        ts_trend=[]
+        lista = []
+        soma = 0.0
+        Z = ts
+    
+        for i in range(poly):
+            lista.append([])
+        
+        for i in range(poly):
+            for ind in range(len(ts)):
+                lista[i].append([float(ts.index[ind])**i])
+    
+        A = np.hstack(lista)
+        At = A.transpose()
+
+        result1 = (At.dot(A))
+        result1 = np.linalg.inv(result1)
+        result2 = (At.dot(Z))
+        
+        B = result2.dot(result1)
+        
+        for x in range(len(ts)):
+            soma = 0.0 
+            for i in range(len(B)):
+                soma = soma + (B[i] * pow(x,i))
+            ts_trend.append(soma)
+        
+        return B, ts_trend
